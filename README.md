@@ -1,120 +1,40 @@
-# SamvaadAI - AI Powered Mock Interview and Practice Platform
+# SamvaadAI
 
-SamvaadAI is an AI-powered mock interview platform designed to help users practice technical and behavioral interviews, evaluate their responses, and receive structured feedback.
+SamvaadAI is a voice-based mock interview app. Choose a role and interview type, optionally upload a PDF résumé, and practise answering questions aloud.
 
-The platform focuses on interview preparation and skill improvement by generating realistic interview questions, transcribing spoken answers, and providing intelligent analysis of responses.
+## How a session works
 
-SamvaadAI does not replace real interviews. It acts as a personal interview practice companion.
+The React, TypeScript and Vite client starts a Vapi browser call. Its assistant configuration selects OpenAI GPT-4 for the interviewer, ElevenLabs for speech synthesis and Deepgram Nova-2 for English transcription. The client displays partial transcripts during the call and submits final speaker-labelled turns to the Express API.
 
----
+The Node.js backend handles résumé analysis, interview generation and assessment. MongoDB stores interviews and completed responses through Mongoose. Upstash Redis supports authentication tokens. After a call, Gemini 2.5 Flash receives the transcript and evaluates answer relevance, structure, technical reasoning and use of examples where supported. The overall score is the rounded mean of the returned category scores. Scores and comments are subjective practice feedback. Independent agreement with human ratings has yet to be measured.
 
-## Problem Statement
+## Run locally
 
-Many students and job seekers struggle to prepare effectively for interviews due to:
+Use Node.js 22.12+ and npm, a MongoDB connection, an Upstash Redis REST database, a Gemini API key with access to Gemini 2.5 Flash, and a Vapi public key for a project able to run the configured assistant.
 
-- Lack of access to realistic mock interviews  
-- Limited personalized feedback  
-- Anxiety and low confidence during practice  
+```sh
+git clone https://github.com/sanchit-pareek/SamvaadAI.git
+cd SamvaadAI/backend
+npm install
+npm run generate-secrets
+```
 
-Traditional preparation methods rely heavily on self-study, which does not simulate real interview conditions.
+Copy `backend/.env.example` to `backend/.env`. Set `PORT=5000`, `CORS_ORIGIN=http://localhost:5173`, and `MONGODB_URI` (for local MongoDB, `mongodb://127.0.0.1:27017/samvaadai`). Set independent generated values for `JWT_SECRET` and `JWT_REFRESH_SECRET`, and supply `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` and `GEMINI_API_KEY`. Run `npm run dev` from `backend`.
 
-There is a need for a system that can:
+In a second terminal, enter `frontend`, run `npm ci` and copy `.env.example` to `.env`. Set `VITE_API_URL=http://localhost:5000/api` and `VITE_VAPI_PUBLIC_KEY` to the Vapi public key. Keep private credentials on the server. Run `npm run dev -- --port 5173 --strictPort`, open `http://localhost:5173` and allow microphone access.
 
-- Conduct mock interviews on demand  
-- Provide structured feedback  
-- Help users identify strengths and weaknesses  
-- Improve interview confidence  
+## Verify assessment behavior
 
----
+From `backend`, run `npm test` for offline tests with deterministic provider responses. From `frontend`, run `npm run build`. For an integration check, finish one voice interview manually and let a second end through Vapi. Check each creates one saved response and that the results match its final transcript. Repeat with an invalid Gemini key after interview generation. Expect an assessment error and captured transcript, without a numerical score or successful response record.
 
-## Solution
+### Small repeatable feedback review
 
-SamvaadAI simulates real interview scenarios by:
+Use the same interviewer prompt for three fixed transcripts: “How would you detect duplicates in an array?” Prefix each answer with `You:`.
 
-- Understanding user resumes  
-- Generating role-specific mock interview questions  
-- Recording and transcribing spoken answers  
-- Evaluating answers using semantic analysis and scoring logic  
-- Producing detailed practice reports  
+| Case | Candidate answer |
+| --- | --- |
+| Relevant, explained | I would keep a set. For each item I check membership before inserting it. The first repeat proves a duplicate. This takes expected linear time and linear extra space. |
+| Relevant, partial | I would sort the array. |
+| Off topic | I usually build dashboards in React. |
 
----
-
-## Key Features
-
-- Resume upload and text extraction  
-- Role-based mock interview question generation  
-- Voice-based answer input  
-- Speech-to-text transcription  
-- Semantic answer evaluation  
-- Intelligent scoring engine  
-- Mock interview report  
-
----
-
-## AI and Machine Learning Components
-
-SamvaadAI integrates multiple AI and ML techniques:
-
-1. Resume understanding using NLP  
-2. Generative mock question creation using large language models  
-3. Speech recognition  
-4. Embedding-based semantic similarity  
-5. Confidence estimation  
-6. Weighted scoring algorithm  
-
-This makes SamvaadAI an AI-driven practice system rather than a simple API wrapper.
-
----
-
-## Technology Stack
-
-Frontend  
-- React (Vite)  
-- Tailwind CSS  
-- Axios  
-- Web Speech API  
-
-Backend  
-- Django  
-- Django REST Framework  
-- OpenAI API or Gemini API  
-- pdfplumber  
-- python-dotenv  
-- django-cors-headers  
-
-Database  
-- SQLite  
-
----
-
-## Installation
-
-### Clone Repository
--git clone https://github.com/divyamsingh007/SamvaadAI.git
--cd SamvaadAI
-
-### Backend Setup
-
-
-Create `.env` file:
-OPENAI_API_KEY=your_api_key_here
-
-
-Run backend server:
-
-### Frontend Setup
--cd frontend
--npm install
--npm run dev
-
----
-
-## Usage
-
-1. Open the web application  
-2. Upload resume in PDF format  
-3. Select job role  
-4. Click Start Mock Interview  
-5. Answer questions using microphone  
-6. Click Finish Interview  
-7. View score and feedback  
+Before viewing model output, have two reviewers independently mark each answer's relevance and reasoning as absent, partial or supported and quote the evidence. Submit each fixed transcript three times through the same assessment service with the same model, prompt and repository commit. Save the inputs, UTC date, raw returned assessments and failures. Report per-case score ranges, failed attempts out of total attempts, unsupported claims with excerpts, and reviewer disagreements. Report ordering against the independent judgments separately from run-to-run variation. This text-only exercise covers feedback consistency and grounding. Transcription accuracy requires separate audio and independently prepared reference transcripts.
