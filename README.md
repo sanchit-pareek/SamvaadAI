@@ -8,7 +8,13 @@ The React, TypeScript and Vite client starts a Vapi browser call. Its assistant 
 
 The Node.js backend handles résumé analysis, interview generation and assessment. MongoDB stores interviews and completed responses through Mongoose. Upstash Redis supports authentication tokens. After a call, Gemini 2.5 Flash receives the transcript and evaluates answer relevance, structure, technical reasoning and use of examples where supported. The overall score is the rounded mean of the returned category scores. Scores and comments are subjective practice feedback. Independent agreement with human ratings has yet to be measured.
 
-## Run locally
+## Try it without credentials
+
+From `backend`, run `npm test` with Node.js 22.12+ to test the assessment parser and error handling. The tests supply model responses locally.
+
+From `frontend`, run `npm ci`, `npm run build`, then `npm run preview -- --port 4173 --strictPort`. Open `http://localhost:4173/results` directly. With no completed interview, the page shows **Assessment unavailable** without a score. You can also explore the setup form. Starting an interview requires the configured backend below.
+
+## Run a live interview
 
 Use Node.js 22.12+ and npm, a MongoDB connection, an Upstash Redis REST database, a Gemini API key with access to Gemini 2.5 Flash, and a Vapi public key for a project able to run the configured assistant.
 
@@ -23,9 +29,15 @@ Copy `backend/.env.example` to `backend/.env`. Set `PORT=5000`, `CORS_ORIGIN=htt
 
 In a second terminal, enter `frontend`, run `npm ci` and copy `.env.example` to `.env`. Set `VITE_API_URL=http://localhost:5000/api` and `VITE_VAPI_PUBLIC_KEY` to the Vapi public key. Keep private credentials on the server. Run `npm run dev -- --port 5173 --strictPort`, open `http://localhost:5173` and allow microphone access.
 
-## Verify assessment behavior
+If setup shows **Failed to create interview**, first open `http://localhost:5000/` on the preview machine and check the backend terminal for a successful MongoDB connection. An example Upstash URL causes the server to exit during startup. For the production preview on port 4173, set `CORS_ORIGIN=http://localhost:4173` and restart the backend. Rebuild the frontend after changing its Vite environment variables.
 
-From `backend`, run `npm test` for offline tests with deterministic provider responses. From `frontend`, run `npm run build`. For an integration check, finish one voice interview manually and let a second end through Vapi. Check each creates one saved response and that the results match its final transcript. Repeat with an invalid Gemini key after interview generation. Expect an assessment error and captured transcript, without a numerical score or successful response record.
+## Verification status
+
+All 10 offline assessment tests passed, the frontend production build completed, and the empty results page was checked in a browser. A live Vapi call, Deepgram transcript capture, Gemini scoring and MongoDB persistence still need an end-to-end run with configured services.
+
+### Live checks
+
+Finish one voice interview manually and let a second end through Vapi. Check each creates one saved response and that the results match its final transcript. Repeat with an invalid Gemini key after interview generation. Expect an assessment error and captured transcript, without a numerical score or successful response record.
 
 ### Small repeatable feedback review
 
