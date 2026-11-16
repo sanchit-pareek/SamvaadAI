@@ -31,11 +31,7 @@ In a second terminal, enter `frontend`, run `npm ci` and copy `.env.example` to 
 
 If setup shows **Failed to create interview**, first open `http://localhost:5000/` on the preview machine and check the backend terminal for a successful MongoDB connection. An example Upstash URL causes the server to exit during startup. For the production preview on port 4173, set `CORS_ORIGIN=http://localhost:4173` and restart the backend. Rebuild the frontend after changing its Vite environment variables.
 
-## Verification status
-
-All 10 offline assessment tests passed, the frontend production build completed, and the empty results page was checked in a browser. A live Vapi call, Deepgram transcript capture, Gemini scoring and MongoDB persistence still need an end-to-end run with configured services.
-
-### Live checks
+## Test a live interview
 
 Finish one voice interview manually and let a second end through Vapi. Check each creates one saved response and that the results match its final transcript. Repeat with an invalid Gemini key after interview generation. Expect an assessment error and captured transcript, without a numerical score or successful response record.
 
