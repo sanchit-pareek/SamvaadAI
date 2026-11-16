@@ -48,6 +48,11 @@ export function useVapi({
 
   const vapiRef = useRef<Vapi | null>(null);
 
+  const callbacks = useRef({ onCallStart, onCallEnd, onMessage, onError });
+  useEffect(() => {
+    callbacks.current = { onCallStart, onCallEnd, onMessage, onError };
+  }, [onCallStart, onCallEnd, onMessage, onError]);
+
   useEffect(() => {
     if (!VAPI_PUBLIC_KEY) {
       setError("Vapi public key not configured");
@@ -63,13 +68,13 @@ export function useVapi({
       setIsCallActive(true);
       setIsLoading(false);
       setError(null);
-      onCallStart?.();
+      callbacks.current.onCallStart?.();
     });
 
     vapi.on("call-end", () => {
       setIsCallActive(false);
       setIsLoading(false);
-      onCallEnd?.();
+      callbacks.current.onCallEnd?.();
     });
 
     vapi.on("message", (message) => {
@@ -104,20 +109,21 @@ export function useVapi({
           }
         });
       }
-      onMessage?.(message);
+      callbacks.current.onMessage?.(message);
     });
 
     vapi.on("error", (err) => {
       setError(err.message || "An error occurred");
       setIsLoading(false);
-      onError?.(err);
+      callbacks.current.onError?.(err);
     });
 
     // Cleanup
     return () => {
+      vapi.removeAllListeners();
       vapi.stop();
     };
-  }, [onCallStart, onCallEnd, onMessage, onError]);
+  }, []);
 
   const startCall = useCallback(async () => {
     if (!vapiRef.current || isCallActive) return;

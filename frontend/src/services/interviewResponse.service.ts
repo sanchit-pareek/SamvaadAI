@@ -51,7 +51,8 @@ export async function saveInterviewResponse(
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const body = await response.json().catch(() => null);
+      throw new Error(body?.message || `Assessment request failed (HTTP ${response.status}).`);
     }
 
     const result = await response.json();

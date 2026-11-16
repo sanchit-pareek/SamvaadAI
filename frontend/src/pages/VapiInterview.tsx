@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { useVapi } from "../hooks/useVapi";
@@ -10,7 +10,7 @@ import type { Interview } from "../types";
 const ANALYSIS_STEPS = [
   "Analysing technicality in answers",
   "Evaluating communication clarity",
-  "Measuring confidence & delivery",
+  "Reviewing answer structure",
   "Reviewing depth of knowledge",
   "Assessing problem-solving approach",
   "Scoring relevance to role",
@@ -84,6 +84,7 @@ export default function InterviewSession() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [analysing, setAnalysing] = useState(false);
   const [analysisStep, setAnalysisStep] = useState(0);
+  const submitted = useRef(false);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -122,52 +123,7 @@ export default function InterviewSession() {
     onCallStart: () => {
       setCallStartTime(Date.now());
     },
-    onCallEnd: () => {
-      // Skip if confirmEnd already started the analysis loader
-      if (analysing) return;
-      setAnalysing(true);
-
-      const duration = callStartTime
-        ? Math.floor((Date.now() - callStartTime) / 1000)
-        : 0;
-
-      const finalTranscript = transcript
-        .filter((e: TranscriptEntry) => e.isFinal)
-        .map(
-          (e: TranscriptEntry) =>
-            `${e.role === "assistant" ? "Interviewer" : "You"}: ${e.text}`,
-        );
-
-      if (interview) {
-        const interviewId = interview.id || interview._id;
-
-        if (interviewId) {
-          saveInterviewResponse({
-            interviewId,
-            userId: interview.userId,
-            fullTranscript: finalTranscript,
-            duration,
-          }).then((result) => {
-            if (result.success && result.data) {
-              const aiEvaluation = result.data.evaluation;
-              navigate("/results", {
-                state: {
-                  interview,
-                  transcript: finalTranscript,
-                  evaluation: aiEvaluation,
-                },
-              });
-            } else {
-              navigate("/results", { state: { interview, transcript: finalTranscript } });
-            }
-          }).catch(console.error);
-        } else {
-           navigate("/results", { state: { interview, transcript: finalTranscript } });
-        }
-      }
-    },
-    onMessage: (_message: any) => {},
-    onError: (_err: Error) => {},
+    onCallEnd: () => { void finishInterview(); },
   });
 
   useEffect(() => {
@@ -215,16 +171,9 @@ export default function InterviewSession() {
     setShowConfirm(true);
   };
 
-  const confirmEnd = useCallback(() => {
-    setShowConfirm(false);
-
-    // Force-kill the call — mute mic, stop assistant voice, end session
-    try {
-      forceStop();
-    } catch {
-      // ignore errors, we're leaving anyway
-    }
-
+  async function finishInterview() {
+    if (submitted.current) return;
+    submitted.current = true;
     setAnalysing(true);
 
     const duration = callStartTime
@@ -238,33 +187,21 @@ export default function InterviewSession() {
           `${e.role === "assistant" ? "Interviewer" : "You"}: ${e.text}`,
       );
 
-    if (interview) {
-      const interviewId = interview.id || interview._id;
+    const interviewId = interview?.id || interview?._id;
+    const result = interview && interviewId
+      ? await saveInterviewResponse({ interviewId, userId: interview.userId, fullTranscript: finalTranscript, duration })
+      : { success: false, message: "Missing interview details." };
+    navigate("/results", { state: {
+      interview, transcript: finalTranscript,
+      evaluation: result.data?.evaluation, assessmentError: result.message,
+    } });
+  }
 
-      if (interviewId) {
-         saveInterviewResponse({
-          interviewId,
-          userId: interview.userId,
-          fullTranscript: finalTranscript,
-          duration,
-        }).then((result) => {
-          if (result.success && result.data) {
-            navigate("/results", {
-              state: {
-                interview,
-                transcript: finalTranscript,
-                evaluation: result.data.evaluation,
-              },
-            });
-          } else {
-             navigate("/results", { state: { interview, transcript: finalTranscript } });
-          }
-        }).catch(console.error);
-      } else {
-         navigate("/results", { state: { interview, transcript: finalTranscript } });
-      }
-    }
-  }, [forceStop, callStartTime, transcript, interview, navigate]);
+  function confirmEnd() {
+    setShowConfirm(false);
+    void finishInterview();
+    forceStop();
+  }
 
   if (loading) {
     return (

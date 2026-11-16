@@ -1,6 +1,6 @@
 import InterviewResponse from "../models/interviewResponse.model.js";
 import Interview from "../models/interview.model.js";
-import { evaluateInterviewTranscript } from "../services/evaluationService.js";
+import { AssessmentError, evaluateInterviewTranscript } from "../services/evaluationService.js";
 
 // Save interview response after completion
 export const saveInterviewResponse = async (req, res) => {
@@ -28,7 +28,6 @@ export const saveInterviewResponse = async (req, res) => {
     if (!evaluation && fullTranscript && fullTranscript.length > 0) {
       console.log(`[AI Scorer]: Evaluating transcript for interview ${interviewId}...`);
       evaluation = await evaluateInterviewTranscript(fullTranscript);
-      console.log(`[AI Scorer]: Successfully generated 40+ parameter scorecard!`);
     } else if (!evaluation) {
       return res.status(400).json({
         success: false,
@@ -68,6 +67,9 @@ export const saveInterviewResponse = async (req, res) => {
       message: "Interview response saved successfully",
     });
   } catch (error) {
+    if (error instanceof AssessmentError) {
+      return res.status(error.status).json({ success: false, code: error.code, message: error.message });
+    }
     console.error("Error saving interview response:", error);
     res.status(500).json({
       success: false,
